@@ -1,0 +1,45 @@
+name: Check notarization status
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        description: "Optional: specific submission UUID to inspect"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    runs-on: macos-latest
+    # Inputs and secrets reach the shell only as environment variables, never
+    # interpolated into the script, so they can't inject commands.
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      SUBMISSION_ID: ${{ inputs.submission_id }}
+    steps:
+      - name: List recent submissions
+        run: |
+          xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD"
+
+      - name: Info + log for one submission
+        if: ${{ inputs.submission_id != '' }}
+        run: |
+          if ! [[ "$SUBMISSION_ID" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+            echo "submission_id must be a UUID" >&2
+            exit 1
+          fi
+          xcrun notarytool info "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD"
+          echo "---- log ----"
+          xcrun notarytool log "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD"

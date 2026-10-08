@@ -1,0 +1,203 @@
+# Build a macOS universal (Apple Silicon + Intel) bundle of Ember on a GitHub-hosted runner.
+#
+# Triggers:
+#   - Manual run from the Actions tab  → uploads .dmg + .app as a workflow artifact
+#   - Push a tag like v0.1.0           → creates a draft GitHub Release with those files attached
+#
+# Builds are signed and notarized when the APPLE_* secrets are configured on the repo:
+#   APPLE_CERTIFICATE              — base64 of your Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD     — export password set on the .p12
+#   APPLE_SIGNING_IDENTITY         — e.g. "Developer ID Application: Your Name (TEAMID)"
+#   APPLE_ID / APPLE_PASSWORD      — Apple ID email + app-specific password for notarytool
+#   APPLE_TEAM_ID                  — 10-char Apple Developer Team ID
+# If any are missing, tauri-action falls back to an unsigned build (first launch
+# would need right-click → Open on the user's Mac).
+#
+# In-app updater (tauri-plugin-updater) secrets:
+#   TAURI_SIGNING_PRIVATE_KEY          — contents of ~/.tauri/ember.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — the password set during `tauri signer generate`
+# When present, tauri-action emits a `.app.tar.gz.sig` next to the bundle and
+# uploads a `latest.json` manifest to the release — installed copies of Ember
+# poll that URL and self-update.
+
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+# Least privilege by default; the build job widens it only for what it needs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    # Hard cap on the whole job to limit macOS minute burn if Apple's
+    # notary service hangs (1 macOS minute = 10 against the free budget).
+    # 40 min covers up to three ~10-min build attempts plus overhead.
+    timeout-minutes: 40
+    permissions:
+      contents: write # needed to create a GitHub Release on tag pushes
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Setup Rust (with both Apple targets for universal binary)
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      # ----------------------------------------------------------------
+      # Build + notarize, with up to 3 attempts.
+      #
+      # Why: Apple's notary service is intermittently flaky from GitHub's
+      # macOS runners. A single HTTP timeout (NSURLErrorDomain -1001)
+      # inside notarytool's polling loop aborts the entire tauri-action
+      # build, even though Apple has typically already Accepted the
+      # submission server-side. Retrying is the standard mitigation.
+      #
+      # Attempts 1 and 2 use `continue-on-error: true` so the job only
+      # actually fails after attempt 3. Conditional `if:` on later
+      # attempts skips them when an earlier one succeeded.
+      # ----------------------------------------------------------------
+
+      - name: Build Tauri app — attempt 1
+        id: build1
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Ember v__VERSION__"
+          releaseBody: |
+            Universal macOS build (Apple Silicon + Intel), signed and notarized.
+            Should launch cleanly on macOS 10.15+ — no Gatekeeper warnings.
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
+
+      - name: Build Tauri app — attempt 2
+        id: build2
+        if: steps.build1.outcome == 'failure'
+        continue-on-error: true
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Ember v__VERSION__"
+          releaseBody: |
+            Universal macOS build (Apple Silicon + Intel), signed and notarized.
+            Should launch cleanly on macOS 10.15+ — no Gatekeeper warnings.
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
+
+      - name: Build Tauri app — attempt 3 (final)
+        id: build3
+        if: steps.build1.outcome == 'failure' && steps.build2.outcome == 'failure'
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # tauri-action picks these up automatically and produces the
+          # .sig + latest.json the updater plugin needs.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Ember v__VERSION__"
+          releaseBody: |
+            Universal macOS build (Apple Silicon + Intel), signed and notarized.
+            Should launch cleanly on macOS 10.15+ — no Gatekeeper warnings.
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin
+
+      - name: Upload as workflow artifact (manual runs only)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ember-macos-universal
+          path: |
+            src-tauri/target/**/release/bundle/dmg/*.dmg
+            src-tauri/target/**/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/**/release/bundle/macos/*.app.tar.gz.sig
+          if-no-files-found: error
+          retention-days: 14
+
+      # Diagnostic: only fires if all three build attempts failed.
+      # Queries Apple directly to see what they actually think — reveals
+      # whether the latest submission is sitting "In Progress" (Apple
+      # slow) or "Invalid" with a hidden error.
+      - name: Apple notarization history (on failure)
+        if: failure()
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "=== Recent notarization submissions ==="
+          xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" || true
+          echo ""
+          echo "=== Detailed log for the most recent submission ==="
+          SUBMISSION_ID=$(xcrun notarytool history \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json 2>/dev/null \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['history'][0]['id'])" 2>/dev/null || echo "")
+          if [ -n "$SUBMISSION_ID" ]; then
+            echo "Submission ID: $SUBMISSION_ID"
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" || true
+          else
+            echo "Could not retrieve a submission ID from history."
+          fi

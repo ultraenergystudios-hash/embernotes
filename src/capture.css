@@ -1,0 +1,28 @@
+html, body { background: transparent; overflow: hidden; }
+body { padding: 14px 18px 30px; }
+.box {
+  background: var(--panel); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden;
+  transform-origin: 50% 0; animation: pop .14s ease-out;
+}
+@keyframes pop { from { opacity: 0; transform: scale(.98) translateY(-4px); } }
+.row { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.mode {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 7px;
+  font-size: 12px; font-weight: 600; background: var(--accent-soft); color: var(--accent); cursor: pointer; user-select: none;
+}
+.mode svg { width: 14px; height: 14px; }
+.mode.waiting { background: var(--warn-soft); color: var(--warn); }
+input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text);
+  font: 400 20px/1.3 var(--display); padding: 4px 0;
+}
+input::placeholder { color: var(--faint); }
+.preview { padding: 0 18px 12px; min-height: 0; }
+.preview:empty { display: none; }
+.foot {
+  display: flex; gap: 14px; padding: 8px 18px; border-top: 1px solid var(--line); background: var(--panel-2);
+  font-size: 11.5px; color: var(--muted);
+}
+.foot .sp { flex: 1; }
+.done .box { animation: none; }
+.flash { color: var(--ok); font-weight: 600; }

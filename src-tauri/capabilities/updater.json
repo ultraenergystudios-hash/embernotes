@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "updater",
+  "description": "Main window only: check for a signed update, ask the user, install it and restart (src/updater.js).",
+  "windows": ["main"],
+  "permissions": [
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "dialog:allow-message",
+    "process:allow-restart"
+  ]
+}

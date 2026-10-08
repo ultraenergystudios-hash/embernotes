@@ -1,0 +1,62 @@
+:root {
+  --bg: #f6f5f2;
+  --panel: #ffffff;
+  --panel-2: #f0eee9;
+  --line: #e4e1da;
+  --text: #1d1c1a;
+  --muted: #7a766d;
+  --faint: #a9a49a;
+  --accent: #6d4aff;
+  --accent-soft: #ece7ff;
+  --danger: #d6453d;
+  --danger-soft: #fbe6e4;
+  --warn: #b7791f;
+  --warn-soft: #fbf0db;
+  --ok: #2f8f5b;
+  --star: #e0a100;
+  --shadow: 0 24px 60px -12px rgba(30, 20, 60, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131316;
+    --panel: #1b1b20;
+    --panel-2: #23232a;
+    --line: #2d2d35;
+    --text: #ecebf0;
+    --muted: #9391a0;
+    --faint: #64626f;
+    --accent: #9b82ff;
+    --accent-soft: #2a2442;
+    --danger: #ff6b62;
+    --danger-soft: #3a1f1e;
+    --warn: #f0b44c;
+    --warn-soft: #3a2e17;
+    --ok: #4cc283;
+    --star: #ffc53d;
+    --shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; font-family: var(--font); color: var(--text); font-size: 14px; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+kbd {
+  font-family: var(--font); font-size: 11px; padding: 1px 5px; border-radius: 4px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px;
+  border-radius: 6px; font-size: 12px; background: var(--panel-2); color: var(--muted); white-space: nowrap;
+}
+.chip svg { width: 13px; height: 13px; flex: none; }
+.chip.date { background: var(--accent-soft); color: var(--accent); }
+.chip.date.overdue { background: var(--danger-soft); color: var(--danger); }
+.chip.date.today { background: var(--warn-soft); color: var(--warn); }
+.chip.remind { background: var(--accent-soft); color: var(--accent); }
+.chip.star { color: var(--star); }
+.chip.wait { background: var(--warn-soft); color: var(--warn); }

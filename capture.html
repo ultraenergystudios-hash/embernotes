@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ember — Quick add</title>
+<link rel="stylesheet" href="/src/base.css">
+<link rel="stylesheet" href="/src/capture.css">
+</head>
+<body>
+  <div class="box" id="box">
+    <div class="row">
+      <span class="mode" id="mode" title="Tab to switch"></span>
+      <input id="in" autocomplete="off" spellcheck="false" placeholder="What do you need to remember?">
+    </div>
+    <div class="preview chips" id="preview"></div>
+    <div class="foot" id="foot">
+      <span><kbd>Enter</kbd> add</span>
+      <span><kbd>Shift</kbd>+<kbd>Enter</kbd> add another</span>
+      <span><kbd>Tab</kbd> todo / waiting on</span>
+      <span class="sp"></span>
+      <span><kbd>Esc</kbd></span>
+    </div>
+  </div>
+<script type="module" src="/src/bridge.js"></script>
+<script type="module" src="/src/parse.js"></script>
+<script type="module" src="/src/ui.js"></script>
+<script type="module" src="/src/capture.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+build
+out
+*.local
+
+# Vite cache
+.vite/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Rust target at repo root (safety net — real one is in src-tauri/.gitignore)
+/target/
+
+# Test coverage
+coverage/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Tauri updater signing keys — never commit. Public key goes in tauri.conf.json,
+# private key contents go into the TAURI_SIGNING_PRIVATE_KEY GitHub secret.
+ember.key
+ember.key.pub
+*.tauri.key
+*.tauri.key.pub
+
+# Local Ember vault for dev (point Settings at a real folder instead)
+.ember-vault/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS detritus
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
